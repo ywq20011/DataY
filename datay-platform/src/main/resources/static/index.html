@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+
+<head>
+    <script src="./js/vue.js"></script>
+    <script src="https://unpkg.com/vue"></script>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- 引入样式 -->
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <!-- 引入组件库 -->
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
+</head>
+
+
+
+<body>
+    <div id="app">
+
+
+        <el-header>DataY数据同步平台</el-header>
+
+        <el-container>
+            <!-- <el-aside>
+                <div class="logo"></div>
+                <el-menu class="el-menu-vertical-demo">
+                    <el-submenu index="1">
+                        <template slot="title">
+                            <i class="el-icon-location"></i>
+                            <span slot="title">任务配置管理</span>
+                        </template>
+                        <el-menu-item-group>
+                            <el-menu-item>
+                                <i class="el-icon-location"></i>
+                                <span slot="title">任务配置列表</span>
+                            </el-menu-item>
+                            <el-menu-item>
+                                <i class="el-icon-location"></i>
+                                <span slot="title">任务配置添加</span>
+                            </el-menu-item>
+                        </el-menu-item-group>
+                    </el-submenu>
+                </el-menu>
+            </el-aside> -->
+
+            <el-main>
+
+                <el-tabs v-model="activeName" @tab-click="handleClick">
+                    <el-tab-pane label="job配置添加" name="first">
+                        <label for="name">job名称</label>
+                        <el-input v-model="formObj.jobName" type="text" placeholder="请输入job名称"></el-input>
+
+                        <label for="name">job配置</label>
+
+                        <div>
+                            <el-button v-on:click="configTemplate('mysqltomysql')">MySQL to MySQL</el-button>
+                            <el-button v-on:click="configTemplate('mysqltomongodb')">MySQL to MongoDB</el-button>
+                            <el-button v-on:click="configTemplate('mysqltorocketmq')">MySQL to RocketMQ</el-button>
+                            <el-button v-on:click="configTemplate('mongodbtorocketmq')">MongoDB to RocketMQ</el-button>
+
+                        </div>
+
+                        <el-input v-model="formObj.jobConfig" type="textarea" autosize placeholder="请输入job配置">
+                        </el-input>
+
+                        <el-button @click="onSubmit($event)">提交</el-button>
+
+                    </el-tab-pane>
+                    <el-tab-pane label="job配置列表" name="second">
+                        <h1>job配置列表</h1>
+
+
+                        <template>
+                            <el-input v-model="params" placeholder="请输入参数，json格式"></el-input>
+                        </template>
+
+
+                        <el-table :data="jobList">
+                            <el-table-column prop="id" label="job id" width="100"></el-table-column>
+                            <el-table-column prop="jobName" label="job名称" width="100"></el-table-column>
+
+                            <el-table-column label="操作" width="600">
+                                <template slot-scope="scope">
+                                    <el-button v-on:click="getJob(scope.row.id)">查看job配置</el-button>
+                                    <el-button v-on:click="getTaskList(scope.row.id,0)">查看task记录</el-button>
+                                    <el-button v-on:click="runJob(scope.row.id)">执行</el-button>
+                                    <el-button v-on:click="deleteJob(scope.row.id)">删除</el-button>
+
+                                </template>
+                            </el-table-column>
+                        </el-table>
+
+                        <el-dialog title="提示" :visible.sync="dialogVisible" width="80%">
+
+                            <h3>jobId: {{jobId}}</h3>
+                            <h3>job名称： <el-input v-model="jobName" type="text" placeholder=""></el-input>
+                            </h3>
+
+                            <span>
+                                <el-input v-model="jobConfig" type="textarea" autosize placeholder="请输入job配置">
+                                </el-input>
+                            </span>
+                            <span slot="footer" class="dialog-footer">
+                                <el-button @click="dialogVisible = false">取 消</el-button>
+                                <el-button type="primary" @click="updateJob()">确 定</el-button>
+                            </span>
+                        </el-dialog>
+
+                        <!-- <el-collapse v-model="activeConfig" @change="handleChange">
+                            <el-collapse-item title="job配置(点击可折叠)" name="1">
+                                <el-button v-on:click="updateJob()">修改</el-button>
+                                <h3>jobId: {{jobId}}</h3>
+                                <h3>job名称： <el-input v-model="jobName" type="text" placeholder=""></el-input>
+                                </h3>
+
+                                <el-input v-model="jobConfig" type="textarea" autosize placeholder="请输入job配置">
+                            </el-collapse-item>
+
+                        </el-collapse> -->
+
+                        <h1>task 记录列表</h1>
+                        <el-table :data="taskList">
+                            <el-table-column prop="id" label="task id" width="100"></el-table-column>
+                            <el-table-column prop="jobId" label="job id" width="100"></el-table-column>
+                            <el-table-column prop="status" label="task状态" width="100"></el-table-column>
+                            <el-table-column prop="totalCosts" label="总耗时" width="100"></el-table-column>
+                            <el-table-column prop="byteSpeedPerSecond" label="平均流量" width="100"></el-table-column>
+                            <el-table-column prop="recordSpeedPerSecond" label="记录写入速度" width="200"></el-table-column>
+                            <el-table-column prop="totalReadRecords" label="读出记录总数" width="200"></el-table-column>
+                            <el-table-column prop="totalErrorRecords" label="读写失败总数" width="200"></el-table-column>
+                            <el-table-column prop="startTime" label="开始时间" width="200"></el-table-column>
+                            <el-table-column prop="endTime" label="结束时间" width="200"></el-table-column>
+                            <el-table-column label="操作" width="600">
+                                <template slot-scope="scope">
+                                    <el-button v-on:click="getTaskLog(scope.row.id)">查看task日志</el-button>
+
+                                </template>
+                            </el-table-column>
+                        </el-table>
+                        <el-pagination   @current-change="handleCurrentChange"  background layout="prev, pager, next" :total="total">
+                        </el-pagination>
+
+                        <pre>{{taskLog}}</pre>
+
+                    </el-tab-pane>
+                </el-tabs>
+
+            </el-main>
+
+        </el-container>
+
+        <!-- <el-footer>元芳</el-footer> -->
+
+    </div>
+    <style>
+        .el-header {
+            background-color: #B3C0D1;
+            color: #333;
+            line-height: 60px;
+        }
+
+        .el-aside {
+            color: #333;
+        }
+    </style>
+
+    <script src="./js/template.js"></script>
+
+    <script>
+
+
+
+        var vm = new Vue({
+            el: '#app',
+            data: {
+                total:0,
+                dialogVisible: false,
+                params: '',
+                taskLog: '',
+                configTemp:config_template,
+                jobId: '',
+                jobName: '',
+                activeName: 'second',
+                activeConfig: '1',
+                jobList: [],
+                taskList: [],
+                jobConfig: "",
+                formObj: {
+                    jobName: '',
+                    jobConfig: ''
+                }
+            },
+
+            created: function () {
+                var self = this;
+                axios.get('/jobs')
+                    .then(function (response) {
+                        console.log(response.data);
+                        self.jobList = response.data
+
+                    })
+                    .catch(function (error) {
+                        console.log(error);
+                    })
+            },
+            methods: {
+
+                handleCurrentChange:function(pageNo){
+
+                    this.$options.methods.getTaskList(this.jobId,pageNo-1,this);
+
+                },
+
+                getTaskLog: function (id) {
+                    var self = this;
+                    axios.get('/tasks/log/' + id)
+                        .then(function (response) {
+                            console.log(response.data);
+                            self.taskLog = response.data
+
+                        })
+                        .catch(function (error) {
+                            console.log(error);
+                        })
+
+                },
+                configTemplate: function (no) {
+                        this.formObj.jobConfig = this.configTemp[no]
+
+                
+                },
+
+                deleteJob: function (id) {
+
+                    //弹窗
+                    var self = this
+                    this.$confirm('此操作将永久删除任务配置, 是否继续?', '提示', {
+                        confirmButtonText: '确定',
+                        cancelButtonText: '取消',
+                        type: 'warning'
+                    }).then(() => {
+
+                        axios.delete('/jobs/' + id)
+                            .then(function (response) {
+                                self.$options.methods.getJobList(self)
+                            })
+                            .catch(function (error) {
+                                console.log(error);
+                            })
+
+                        this.$message({
+                            type: 'success',
+                            message: '删除成功!'
+                        });
+                    }).catch(() => {
+                        this.$message({
+                            type: 'info',
+                            message: '已取消删除'
+                        });
+                    });
+
+                },
+                getTaskList: function (id,pageNo,obj) {
+
+                    var self = this;
+                    self.taskLog=''
+                    if(obj!=null){
+                        self = obj;
+                    }
+                    self.jobId = id;
+                    axios.get('/tasks?jobId=' + id+'&page='+pageNo)
+                        .then(function (response) {
+                            self.taskList = response.data.data
+                            self.total = response.data.total
+                        })
+                        .catch(function (error) {
+                            console.log(error);
+                        })
+
+                },
+
+                handleChange(tab, event) {
+
+                },
+                handleClick(tab, event) {
+                    console.log(tab, event);
+                },
+                getConfig: function () {
+                    return this.jobConfig
+                },
+                getJobList: function (obj) {
+
+                    var self = this;
+                    if (obj != null) {
+                        self = obj
+                    }
+
+                    axios.get('/jobs')
+                        .then(function (response) {
+                            self.jobList = response.data
+                        })
+                        .catch(function (error) {
+                            console.log(error);
+                        })
+                },
+                updateJob: function () {
+
+                    this.$confirm('此操作将修改任务配置，是否继续?', '提示', {
+                        confirmButtonText: '确定',
+                        cancelButtonText: '取消',
+                        type: 'warning'
+                    }).then(() => {
+                        axios.put('/jobs/' + this.jobId, { jobConfig: this.jobConfig, jobName: this.jobName }, { headers: { 'content-type': 'application/json' } })
+                            .then(function (response) {
+
+                            })
+                            .catch(function (error) {
+                                console.log(error);
+                            })
+
+                        this.$message({
+                            type: 'success',
+                            message: '修改成功!'
+                        });
+                    }).catch(() => {
+                        this.$message({
+                            type: 'info',
+                            message: '已取消'
+                        });
+                    });
+
+
+
+                },
+                getJob: function (id) {
+                    var self = this;
+                    self.jobId = id;
+                    self.dialogVisible = true
+                    axios.get('/jobs/' + id)
+                        .then(function (response) {
+                            self.jobConfig = response.data.jobConfig
+                            self.jobId = id
+                            self.jobName = response.data.jobName
+                        })
+                        .catch(function (error) {
+                            console.log(error);
+                        })
+                },
+                runJob: function (id) {
+                    var self = this;
+                    this.$confirm('此操作将执行任务，是否继续?', '提示', {
+                        confirmButtonText: '确定',
+                        cancelButtonText: '取消',
+                        type: 'warning'
+                    }).then(() => {
+
+                        axios.get('/jobs/run/' + id + "?params=" + encodeURI(self.params))
+                            .then(function (response) {
+
+                            })
+                            .catch(function (error) {
+                                console.log(error);
+                            })
+
+                        this.$message({
+                            type: 'success',
+                            message: '执行开始!'
+                        });
+                    }).catch(() => {
+                        this.$message({
+                            type: 'info',
+                            message: '已取消执行'
+                        });
+                    });
+
+
+                },
+                onSubmit: function (event) {
+                    var self = this;
+                    event.preventDefault();
+
+                    //弹窗
+                    var self = this
+                    this.$confirm('保存任务配置, 是否继续?', '提示', {
+                        confirmButtonText: '确定',
+                        cancelButtonText: '取消',
+                        type: 'warning'
+                    }).then(() => {
+
+                        let formData = JSON.stringify(this.formObj);
+                        console.log(formData);
+                        axios.post('jobs', formData, { headers: { 'content-type': 'application/json' } })
+                            .then(function (response) {
+                                self.$options.methods.getJobList(self)
+                            })
+                            .catch(function (error) {
+                                console.log(error);
+                            });
+
+                        this.$message({
+                            type: 'success',
+                            message: '保存成功!'
+                        });
+                    }).catch(() => {
+                        this.$message({
+                            type: 'info',
+                            message: '已取消保存'
+                        });
+                    });
+
+
+                }
+            }
+
+
+
+        })
+    </script>
+
+</body>
